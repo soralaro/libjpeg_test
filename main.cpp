@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "turbojpeg.h"
+#include <string>
 
 typedef unsigned char uchar;
 
@@ -127,6 +128,7 @@ uchar *tjpeg_decompress_yuv(uchar *jpg_buffer, tjp_info_t *tinfo)
     uchar *yuv_buffer = (uchar *)malloc(sizeof(uchar) * size);
 
     tjDecompressToYUV2	(handle,jpg_buffer,tinfo->jpg_size, yuv_buffer,img_width, 4, img_height, 0);
+
     tjDestroy(handle);
     return yuv_buffer;
 
@@ -178,13 +180,12 @@ int tjpeg_yuv_compress(uchar *yuv_buffer, tjp_info_t *tinfo, int quality, uchar 
 }
 
 /*测试程序*/
-int tj_test()
+int tj_test(char *file_name)
 {
     tjp_info_t tinfo;
-    char *filename = "./1.jpg";
     int start = get_timer_now();
     /*读图像*/
-    uchar *jpeg_buffer = read_file2buffer(filename,&tinfo);
+    uchar *jpeg_buffer = read_file2buffer(file_name,&tinfo);
     int rend = get_timer_now();
     printf("loadfile make time:%d\n",rend-start);
     if (NULL == jpeg_buffer) {
@@ -200,6 +201,9 @@ int tj_test()
         free(jpeg_buffer);
         return -1;
     }
+    std::string outfile_yuv_name=std::string(file_name)+"_w_"+std::to_string((tinfo.outwidth+3)/4*4)+"_h_"+std::to_string(tinfo.outheight)+".i420";
+    int yuv_size=(tinfo.outwidth+3)/4*4*((tinfo.outheight+1)/2*2)*3/2;
+    write_buffer2file((char *)outfile_yuv_name.c_str(),yuv,yuv_size);
     int dend = get_timer_now();
     printf("decompress make time:%d\n",dend-dstart);
     uchar *outjpeg=NULL;
@@ -212,9 +216,10 @@ int tj_test()
     printf("out jpeg size = %lu\n",outjpegsize);
     int cend = get_timer_now();
     printf("compress make time:%d\n",cend-cstart);
-    char *outfile = "./tjout.jpg";
+
     int wstart = get_timer_now();
-    write_buffer2file(outfile,outjpeg,outjpegsize);
+    std::string  outfile_jpg_name="yuv"+std::string(file_name);
+    write_buffer2file((char *)outfile_jpg_name.c_str(),outjpeg,outjpegsize);
     int wend = get_timer_now();
     printf("write file make time:%d\n",wend-wstart);
     int end = get_timer_now();
@@ -224,7 +229,12 @@ int tj_test()
     return 0;
 }
 
-int main()
+int main(int argc, char* argv[])
 {
-    tj_test();
+    if(argc!=2)
+    {
+        printf("please input file name!\n");
+    }
+    char *filename=argv[1];
+    tj_test(filename);
 }
